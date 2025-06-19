@@ -4,10 +4,10 @@
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="fas fa-cogs me-2"></i>Program Dashboard</h1>
+            <h1><i class="fas fa-cogs me-2"></i>Панель управления программами</h1>
             <button class="btn btn-outline-primary" onclick="refreshAll()">
                 <i class="fas fa-sync-alt me-1"></i>
-                Refresh All
+                Обновить все
             </button>
         </div>
         
@@ -23,13 +23,13 @@
                         </h5>
                         <div class="btn-group" role="group">
                             <button class="btn btn-sm btn-success" onclick="startProgram({{ program_id }})" id="start-btn-{{ program_id }}">
-                                <i class="fas fa-play me-1"></i>Start
+                                <i class="fas fa-play me-1"></i>Запуск
                             </button>
                             <button class="btn btn-sm btn-warning" onclick="stopProgram({{ program_id }})" id="stop-btn-{{ program_id }}">
-                                <i class="fas fa-stop me-1"></i>Stop
+                                <i class="fas fa-stop me-1"></i>Стоп
                             </button>
                             <button class="btn btn-sm btn-outline-secondary" onclick="clearLogs({{ program_id }})">
-                                <i class="fas fa-trash me-1"></i>Clear
+                                <i class="fas fa-trash me-1"></i>Очистить
                             </button>
                         </div>
                     </div>
@@ -37,7 +37,7 @@
                     <div class="card-body">
                         <div class="mb-2">
                             <small class="text-muted">
-                                Status: <span class="fw-bold" id="status-text-{{ program_id }}">{{ program.status|title }}</span>
+                                Статус: <span class="fw-bold" id="status-text-{{ program_id }}">{{ program.status|title }}</span>
                                 {% if program.pid %}
                                 | PID: <span class="fw-bold" id="pid-{{ program_id }}">{{ program.pid }}</span>
                                 {% endif %}
@@ -51,7 +51,7 @@
                         <div class="mt-2">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Logs update in real-time
+                                Логи обновляются в реальном времени
                             </small>
                         </div>
                     </div>

@@ -1,13 +1,14 @@
 // Program monitoring and management functionality
 
-let eventSources = {};
 let statusUpdateInterval;
+let logUpdateIntervals = {};
+let lastLogTimestamps = {};
 
 function initializeProgramMonitoring() {
     // Load initial logs for all programs
     [1, 2, 3, 4].forEach(programId => {
         loadProgramLogs(programId);
-        startLogStreaming(programId);
+        startLogPolling(programId);
     });
     
     // Start status monitoring
@@ -25,60 +26,77 @@ function loadProgramLogs(programId) {
                 ).join('');
                 scrollToBottom(logsContainer);
             } else {
-                logsContainer.innerHTML = '<div class="text-muted">No logs available</div>';
+                logsContainer.innerHTML = '<div class="text-muted">Нет доступных логов</div>';
+            }
+            
+            // Store timestamp for future polling
+            if (data.timestamp) {
+                lastLogTimestamps[programId] = data.timestamp;
             }
         })
         .catch(error => {
             console.error(`Error loading logs for program ${programId}:`, error);
             const logsContainer = document.getElementById(`logs-${programId}`);
-            logsContainer.innerHTML = '<div class="text-danger">Error loading logs</div>';
+            logsContainer.innerHTML = '<div class="text-danger">Ошибка загрузки логов</div>';
         });
 }
 
-function startLogStreaming(programId) {
-    // Close existing connection if any
-    if (eventSources[programId]) {
-        eventSources[programId].close();
+function startLogPolling(programId) {
+    // Clear existing interval if any
+    if (logUpdateIntervals[programId]) {
+        clearInterval(logUpdateIntervals[programId]);
     }
     
-    const eventSource = new EventSource(`/api/programs/${programId}/logs/stream`);
-    eventSources[programId] = eventSource;
+    // Poll for new logs every 2 seconds
+    logUpdateIntervals[programId] = setInterval(() => {
+        pollForNewLogs(programId);
+    }, 2000);
+}
+
+function pollForNewLogs(programId) {
+    const sinceParam = lastLogTimestamps[programId] ? `?since=${encodeURIComponent(lastLogTimestamps[programId])}` : '';
     
-    let initialLogsLoaded = false;
-    
-    eventSource.onmessage = function(event) {
-        const logsContainer = document.getElementById(`logs-${programId}`);
-        
-        if (!initialLogsLoaded) {
-            // Clear loading message
-            logsContainer.innerHTML = '';
-            initialLogsLoaded = true;
-        }
-        
-        // Add new log line
-        const logDiv = document.createElement('div');
-        logDiv.className = 'log-line';
-        logDiv.textContent = event.data;
-        logsContainer.appendChild(logDiv);
-        
-        // Keep only last 500 lines for performance
-        const logLines = logsContainer.querySelectorAll('.log-line');
-        if (logLines.length > 500) {
-            logLines[0].remove();
-        }
-        
-        scrollToBottom(logsContainer);
-    };
-    
-    eventSource.onerror = function(event) {
-        console.error(`Error in log stream for program ${programId}:`, event);
-        eventSource.close();
-        
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-            startLogStreaming(programId);
-        }, 5000);
-    };
+    fetch(`/api/programs/${programId}/logs${sinceParam}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.logs && data.logs.length > 0) {
+                const logsContainer = document.getElementById(`logs-${programId}`);
+                
+                // If this is the first load or we have new logs
+                if (!sinceParam || data.logs.length > 0) {
+                    if (!sinceParam) {
+                        // Full reload
+                        logsContainer.innerHTML = data.logs.map(log => 
+                            `<div class="log-line">${escapeHtml(log)}</div>`
+                        ).join('');
+                    } else {
+                        // Append new logs
+                        data.logs.forEach(log => {
+                            const logDiv = document.createElement('div');
+                            logDiv.className = 'log-line';
+                            logDiv.textContent = log;
+                            logsContainer.appendChild(logDiv);
+                        });
+                        
+                        // Keep only last 500 lines for performance
+                        const logLines = logsContainer.querySelectorAll('.log-line');
+                        while (logLines.length > 500) {
+                            logLines[0].remove();
+                        }
+                    }
+                    
+                    scrollToBottom(logsContainer);
+                }
+            }
+            
+            // Update timestamp for next poll
+            if (data.timestamp) {
+                lastLogTimestamps[programId] = data.timestamp;
+            }
+        })
+        .catch(error => {
+            console.error(`Error polling logs for program ${programId}:`, error);
+        });
 }
 
 function startStatusMonitoring() {
@@ -122,7 +140,7 @@ function updateProgramStatus(programId, program) {
     
     // Update button states
     if (startBtn && stopBtn) {
-        if (program.status === 'running') {
+        if (program.status === 'запущен') {
             startBtn.disabled = true;
             stopBtn.disabled = false;
         } else {
@@ -133,7 +151,7 @@ function updateProgramStatus(programId, program) {
 }
 
 function startProgram(programId) {
-    showAlert('info', `Starting program ${programId}...`);
+    showAlert('info', `Запуск программы ${programId}...`);
     
     fetch(`/api/programs/${programId}/start`, {
         method: 'POST'
@@ -148,12 +166,12 @@ function startProgram(programId) {
     })
     .catch(error => {
         console.error(`Error starting program ${programId}:`, error);
-        showAlert('danger', `Error starting program ${programId}`);
+        showAlert('danger', `Ошибка запуска программы ${programId}`);
     });
 }
 
 function stopProgram(programId) {
-    showAlert('info', `Stopping program ${programId}...`);
+    showAlert('info', `Остановка программы ${programId}...`);
     
     fetch(`/api/programs/${programId}/stop`, {
         method: 'POST'
@@ -168,12 +186,12 @@ function stopProgram(programId) {
     })
     .catch(error => {
         console.error(`Error stopping program ${programId}:`, error);
-        showAlert('danger', `Error stopping program ${programId}`);
+        showAlert('danger', `Ошибка остановки программы ${programId}`);
     });
 }
 
 function clearLogs(programId) {
-    if (confirm(`Are you sure you want to clear logs for program ${programId}?`)) {
+    if (confirm(`Вы уверены, что хотите очистить логи программы ${programId}?`)) {
         fetch(`/api/programs/${programId}/clear_logs`, {
             method: 'POST'
         })
@@ -181,7 +199,7 @@ function clearLogs(programId) {
         .then(data => {
             if (data.status === 'success') {
                 const logsContainer = document.getElementById(`logs-${programId}`);
-                logsContainer.innerHTML = '<div class="text-muted">Logs cleared</div>';
+                logsContainer.innerHTML = '<div class="text-muted">Логи очищены</div>';
                 showAlert('success', data.message);
             } else {
                 showAlert('danger', data.message);
@@ -189,13 +207,13 @@ function clearLogs(programId) {
         })
         .catch(error => {
             console.error(`Error clearing logs for program ${programId}:`, error);
-            showAlert('danger', `Error clearing logs for program ${programId}`);
+            showAlert('danger', `Ошибка очистки логов программы ${programId}`);
         });
     }
 }
 
 function refreshAll() {
-    showAlert('info', 'Refreshing all programs...');
+    showAlert('info', 'Обновление всех программ...');
     
     // Reload logs for all programs
     [1, 2, 3, 4].forEach(programId => {
@@ -210,11 +228,11 @@ function refreshAll() {
                 const program = data[programId];
                 updateProgramStatus(programId, program);
             });
-            showAlert('success', 'All programs refreshed');
+            showAlert('success', 'Все программы обновлены');
         })
         .catch(error => {
             console.error('Error refreshing programs:', error);
-            showAlert('danger', 'Error refreshing programs');
+            showAlert('danger', 'Ошибка обновления программ');
         });
 }
 
@@ -264,9 +282,9 @@ function escapeHtml(text) {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', function() {
-    // Close all event sources
-    Object.values(eventSources).forEach(eventSource => {
-        eventSource.close();
+    // Clear all log polling intervals
+    Object.values(logUpdateIntervals).forEach(interval => {
+        clearInterval(interval);
     });
     
     // Clear status monitoring interval
