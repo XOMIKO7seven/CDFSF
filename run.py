@@ -31,7 +31,7 @@ class ProgramManager:
     def __init__(self):
         self.programs = {
             1: {
-                'name': 'Twitch Channel Points Miner',
+                'name': 'timoshka',
                 'path': 'programs/program1',
                 'script': 'run.py',
                 'process': None,
@@ -40,27 +40,27 @@ class ProgramManager:
                 'last_update': None
             },
             2: {
-                'name': 'Монитор системы', 
+                'name': 'shaurma', 
                 'path': 'programs/program2',
-                'script': 'main.py',
+                'script': 'run.py',
                 'process': None,
                 'logs': deque(maxlen=1000),
                 'status': 'остановлен',
                 'last_update': None
             },
             3: {
-                'name': 'Файловый монитор',
+                'name': 'XOMIKO',
                 'path': 'programs/program3', 
-                'script': 'main.py',
+                'script': 'run.py',
                 'process': None,
                 'logs': deque(maxlen=1000),
                 'status': 'остановлен',
                 'last_update': None
             },
             4: {
-                'name': 'API монитор',
+                'name': 'danya',
                 'path': 'programs/program4',
-                'script': 'main.py', 
+                'script': 'run.py', 
                 'process': None,
                 'logs': deque(maxlen=1000),
                 'status': 'остановлен',
